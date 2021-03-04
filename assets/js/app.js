@@ -23,13 +23,17 @@ const player = $('.player');
 const progress = $('.progress');
 const nextBtn = $('.btn-next');
 const prevBtn = $('.btn-prev');
-const repeatBtn = $('.btn-repeat');
 const randomBtn = $('.btn-random');
+const repeatBtn = $('.btn-repeat');
+const playlist = $('.playlist');
+const currentTimeOfSong = $('.current-time');
+const durationTimeOfSong = $('.duration-time');
 
 const app = {
     currentIndex: 0,
     isPlaying: false,
     isRandom: false,
+    isRepeat: false,
     songs: [{
             name: 'Đom đóm',
             singer: 'Jack',
@@ -121,9 +125,9 @@ const app = {
         },
     ],
     render: function() {
-        const htmls = this.songs.map(song => {
+        const htmls = this.songs.map((song, index) => {
             return `
-            <div class="song">
+            <div class="song ${index == 0 ? 'active' : ''}" data-id="${index}">
                 <div class="thumb" style="background-image: url('${song.image}')">
                 </div>
                 <div class="body">
@@ -136,7 +140,7 @@ const app = {
             </div>
             `;
         })
-        $('.playlist').innerHTML = htmls.join("\n");
+        playlist.innerHTML = htmls.join("\n");
     },
     defineProperties: function() {
         Object.defineProperty(this, 'currentSong', {
@@ -182,6 +186,7 @@ const app = {
             _this.isPlaying = true;
             player.classList.add('playing');
             cdThumbAnimate.play();
+            _this.getTimeOfSong();
         }
 
         // Khi song bị pause
@@ -213,6 +218,8 @@ const app = {
                 _this.nextSong();
             }
             audio.play();
+            _this.addClassActive();
+            _this.scrollToActiveSong();
         }
 
         // Xử lý sự kiện khi prev bài hát
@@ -223,12 +230,51 @@ const app = {
                 _this.prevSong();
             }
             audio.play();
+            _this.addClassActive();
+            _this.scrollToActiveSong();
         }
 
         // Xử lý sự kiện khi nhấn random
         randomBtn.onclick = function() {
+            if (_this.isRepeat) {
+                _this.isRepeat = false;
+                repeatBtn.classList.toggle('active', _this.isRepeat);
+            }
             _this.isRandom = !_this.isRandom;
             randomBtn.classList.toggle('active', _this.isRandom);
+        }
+
+        // Xử lý lặp lại một bài hát
+        repeatBtn.onclick = function() {
+            if (_this.isRandom) {
+                _this.isRandom = false;
+                randomBtn.classList.toggle('active', _this.isRandom);
+            }
+            _this.isRepeat = !_this.isRepeat;
+            repeatBtn.classList.toggle('active', _this.isRepeat);
+        }
+
+        // Xử lý sự kiện khi hết bài hát
+        audio.onended = function() {
+            if (_this.isRepeat) {
+                audio.play();
+            } else {
+                nextBtn.click();
+            }
+        }
+
+        // Lắng nghe sự kiện khi click vào playlist 
+        playlist.onclick = function(e) {
+            const songElement = e.target.closest('.song:not(.active)');
+            if (e.target.closest('.option')) {
+                return;
+            }
+            if (songElement) {
+                _this.currentIndex = songElement.dataset.id;
+                _this.loadCurrentSong();
+                _this.addClassActive();
+                audio.play();
+            }
         }
 
     },
@@ -259,15 +305,37 @@ const app = {
         this.currentIndex = newIndex;
         this.loadCurrentSong();
     },
+    addClassActive: function() {
+        const listSong = $$('.song');
+        $('.song.active').classList.remove('active');
+
+        listSong[this.currentIndex].classList.add('active');
+
+    },
+    scrollToActiveSong: function() {
+        setTimeout(() => {
+            $('.song.active').scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+            });
+        }, 300);
+    },
+    getTimeOfSong: function() {
+        setInterval(() => {
+            currentTimeOfSong.innerText = ConvertSecondsToMinutes(audio.currentTime);
+            durationTimeOfSong.innerText = ConvertSecondsToMinutes(audio.duration);
+        }, 100);
+
+    },
     start: function() {
         // Định nghĩa các thuộc tính cho object
         this.defineProperties();
 
-        // Lắng nghe / xử lý các sự kiện (DOM events)
-        this.handleEvents();
-
         // Tải thông tin bài hát đầu tiên vào UI
         this.loadCurrentSong();
+
+        // Lắng nghe / xử lý các sự kiện (DOM events)
+        this.handleEvents();
 
         // Render playlist
         this.render();
@@ -275,3 +343,16 @@ const app = {
 }
 
 app.start();
+
+function ConvertSecondsToMinutes(seconds) {
+    let m, s;
+    m = Math.floor(seconds / 60);
+    s = Math.floor(seconds) - m * 60;
+    if (m < 10) {
+        m = '0' + m;
+    }
+    if (s < 10) {
+        s = '0' + s;
+    }
+    return m + ':' + s;
+}

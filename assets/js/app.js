@@ -29,6 +29,7 @@ const randomBtn = $('.btn-random');
 const app = {
     currentIndex: 0,
     isPlaying: false,
+    isRandom: false,
     songs: [{
             name: 'Đom đóm',
             singer: 'Jack',
@@ -156,7 +157,6 @@ const app = {
             iterations: Infinity
         })
         cdThumbAnimate.pause();
-        console.log(cdThumbAnimate);
 
         // Xử lý phóng to hoặc thu nhỏ CD
         document.onscroll = function() {
@@ -175,7 +175,6 @@ const app = {
             } else {
                 audio.play();
             }
-
         }
 
         // Khi song được play
@@ -208,15 +207,30 @@ const app = {
 
         // Xử lý sự kiện khi next bài hát
         nextBtn.onclick = function() {
-            _this.nextSong();
+            if (_this.isRandom) {
+                _this.playRandomSong();
+            } else {
+                _this.nextSong();
+            }
             audio.play();
         }
 
         // Xử lý sự kiện khi prev bài hát
         prevBtn.onclick = function() {
-            _this.prevSong();
+            if (_this.isRandom) {
+                _this.playRandomSong();
+            } else {
+                _this.prevSong();
+            }
             audio.play();
         }
+
+        // Xử lý sự kiện khi nhấn random
+        randomBtn.onclick = function() {
+            _this.isRandom = !_this.isRandom;
+            randomBtn.classList.toggle('active', _this.isRandom);
+        }
+
     },
     loadCurrentSong: function() {
         heading.textContent = this.currentSong.name;
@@ -235,6 +249,14 @@ const app = {
         if (this.currentIndex <= -1) {
             this.currentIndex = this.songs.length - 1;
         }
+        this.loadCurrentSong();
+    },
+    playRandomSong: function() {
+        let newIndex;
+        do {
+            newIndex = Math.floor(Math.random() * this.songs.length);
+        } while (this.currentIndex === newIndex);
+        this.currentIndex = newIndex;
         this.loadCurrentSong();
     },
     start: function() {
